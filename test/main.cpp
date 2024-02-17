@@ -1,51 +1,34 @@
 #include <GL/gl.h>
-#include <cstdlib>
+#include <glm/glm.hpp>
 #include <f2/runtime/window.hpp>
 #include <f2/runtime/frame.hpp>
 
-struct libinit {
-  libinit() {
-    if (!glfwInit())
-      exit(-1);    
-  }
-  ~libinit() {
-    glfwTerminate();
-  }
-};
-
-
-
 int main(void) {
-  libinit initializer;
-
-  {
   f2::window window;
 
-  float x{ 320 }, y{ 240 };
-  float size{ 10 };
-  float dx{ 1 }, dy{ 1 };
-  float speed{ 50 };
+  glm::vec2 pos{ 0, 0 };
+  glm::vec2 delta{ 1, 1 };
+  float size{ 25 };
+  float speed{ 150 };
 
   while (f2::frame frame = window.next_frame()) {
     // Update
-    x += dx * speed * frame.elapsed_time;
-    if (x + size > frame.width) {
-      x = frame.width - size;
-      dx = -1;
+    pos += delta * speed * (float)frame.elapsed_time;
+    if (pos.x + size > frame.width) {
+      pos.x = frame.width - size;
+      delta.x = -1;
     }
-    else if (x < 0) {
-      x = 0;
-      dx = 1;
+    else if (pos.x < 0) {
+      pos.x = 0;
+      delta.x = 1;
     }
-
-    y += dy * speed * frame.elapsed_time;
-    if (y + size > frame.height) {
-      y = frame.height - size;
-      dy = -1;
+    if (pos.y + size > frame.height) {
+      pos.y = frame.height - size;
+      delta.y = -1;
     }
-    else if (y < 0) {
-      y = 0;
-      dy = 1;
+    else if (pos.y < 0) {
+      pos.y = 0;
+      delta.y = 1;
     }
 
     // Draw
@@ -60,10 +43,9 @@ int main(void) {
     glLoadIdentity();
 
     glColor3f(0.862f, 0.376f, 0.407f);
-    glRectf(x, y, x + size, y + size);
+    glRectf(pos.x, pos.y, pos.x + size, pos.y + size);
 
     glFlush();
-  }
   }
 
   return 0;

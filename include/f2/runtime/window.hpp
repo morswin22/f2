@@ -1,7 +1,7 @@
 #pragma once
+#include "f2/runtime/initializer.hpp"
 #include <GLFW/glfw3.h>
-
-#include <cstdlib>
+#include <optional>
 
 namespace f2 {
   struct frame;
@@ -9,6 +9,7 @@ namespace f2 {
   class window {
     GLFWwindow* glfw_window{ nullptr };
     double last_time{ 0.0 };
+    static std::optional<f2::initializer> initializer;
   public:
     window();
     ~window();

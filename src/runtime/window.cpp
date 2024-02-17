@@ -1,9 +1,15 @@
 #include "GLFW/glfw3.h"
+#include <cstdlib>
 #include <f2/runtime/window.hpp>
 
 #include <f2/runtime/frame.hpp>
 
+std::optional<f2::initializer> f2::window::initializer{ std::nullopt };
+
 f2::window::window() {
+  if (!initializer.has_value())
+    initializer.emplace();
+
   glfw_window = glfwCreateWindow(640, 480, "Hello, World!", nullptr, nullptr);
   if (!glfw_window) {
     glfwTerminate();

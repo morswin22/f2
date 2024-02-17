@@ -1,4 +1,3 @@
-#include "GLFW/glfw3.h"
 #include <f2/runtime/frame.hpp>
 
 f2::frame::operator bool() const {
