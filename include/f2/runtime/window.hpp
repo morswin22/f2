@@ -8,14 +8,17 @@ namespace f2 {
 
   class window {
     GLFWwindow* glfw_window{ nullptr };
+    int width{ 640 };
+    int height{ 480 };
     double last_time{ 0.0 };
     static std::optional<f2::initializer> initializer;
   public:
     window();
     ~window();
 
+    operator GLFWwindow*() { return glfw_window; }
+
     frame next_frame();
-    void end_frame();
   };
 
 }

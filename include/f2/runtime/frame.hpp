@@ -4,18 +4,16 @@
 namespace f2 {
 
   struct frame {
-    const bool should_close{ false };
-    int width;
-    int height;
-    double elapsed_time;
+    const bool should_close;
+    const int width;
+    const int height;
+    const double elapsed_time;
     f2::window& window;
 
-    // frame() = default;
-    frame(bool _should_close, f2::window& _window);
+    frame(bool _should_close, int _width, int _height, double _elapsed_time, f2::window& _window);
     ~frame();
-    
 
-    operator bool() const;
+    operator bool() const { return !should_close; }
   };
 
 }

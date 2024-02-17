@@ -1,10 +1,13 @@
+#include <GLFW/glfw3.h>
 #include <GL/gl.h>
 #include <glm/glm.hpp>
+#include <imgui.h>
 #include <f2/runtime/window.hpp>
 #include <f2/runtime/frame.hpp>
 
 int main(void) {
   f2::window window;
+  glfwSetWindowTitle(window, "Hello, World!");
 
   glm::vec2 pos{ 0, 0 };
   glm::vec2 delta{ 1, 1 };
@@ -46,6 +49,11 @@ int main(void) {
     glRectf(pos.x, pos.y, pos.x + size, pos.y + size);
 
     glFlush();
+
+    // UI
+    ImGui::Begin("Info");
+    ImGui::TextWrapped("elapsed time %f", frame.elapsed_time);
+    ImGui::End();
   }
 
   return 0;
