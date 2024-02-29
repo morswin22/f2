@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(f2)
+set(CMAKE_CXX_STANDARD 26)
 
 # option(f2-enable-imgui "Compile with Dear ImGui" TRUE)
 set(f2-enable-imgui TRUE)
@@ -27,7 +28,13 @@ FetchContent_Declare(
   GIT_TAG 2759ceca04db5c36d2806a2280f51b83a6749c12
 )
 
-FetchContent_MakeAvailable(glfw glew glm)
+FetchContent_Declare(
+  stb
+  GIT_REPOSITORY https://github.com/nothings/stb.git
+  GIT_TAG ae721c50eaf761660b4f90cc590453cdb0c2acd0 
+)
+
+FetchContent_MakeAvailable(glfw glew glm stb)
 
 if(f2-enable-imgui)
   FetchContent_Declare(
@@ -48,6 +55,7 @@ file(GLOB_RECURSE f2-src "src/**/*.cpp")
 add_library(f2 STATIC ${f2-src})
 target_include_directories(f2
   PUBLIC include
+  PUBLIC ${stb_SOURCE_DIR}
 )
 target_link_libraries(f2 glfw libglew_static glm)
 if (f2-enable-imgui)
@@ -55,5 +63,94 @@ if (f2-enable-imgui)
   target_link_libraries(f2 imgui_cmake)
 endif()
 
+function(f2_set_assets_dir target path)
+  # for all assets in path
+  set(template_source
+"#include <f2_assets.hpp>
+extern char data_start[] SEMI
+extern char data_end[] SEMI
+asm(
+  \".section \\\".rodata\\\", \\\"a\\\", @progbits\\n\"
+  \"data_start:\\n\"
+    \".incbin \\\"?path?\\\"\\n\"
+  \"data_end:\\n\"
+    \".previous\\n\"
+) SEMI
+const char* f2::asset<\"?filename?\">::data{ data_start } SEMI
+const size_t f2::asset<\"?filename?\">::size{ static_cast<size_t>(data_end - data_start) } SEMI
+")
+
+  set(template_header
+"#include <f2/asset/asset.hpp>
+?extras?
+namespace f2 {
+  template <>
+  struct asset<\"?filename?\"> {
+    static const char* data SEMI
+    static const size_t size SEMI
+?casts?
+  } SEMI
+}
+")
+
+  set(image_exts ".jpg;.jpeg;.png;.bmp")
+  set(image_extras "#include <f2/asset/image.hpp>")
+  set(image_casts "
+    operator f2::image() const {
+      return f2::image(data, size) SEMI
+    }")
+
+  file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/f2_assets.hpp" "#include <stddef.h>\n")
+  set(sources "")
+
+  file(GLOB_RECURSE assets "${path}/*")
+  foreach(asset ${assets})
+    get_filename_component(ext ${asset} LAST_EXT)
+    get_filename_component(filename ${asset} NAME)
+ 
+    set(output_source ${template_source})
+    set(output_header ${template_header})
+
+    string(REPLACE "?filename?" ${filename} output_source ${output_source})
+    string(REPLACE "?filename?" ${filename} output_header ${output_header})
+
+    string(REPLACE "?path?" ${asset} output_source ${output_source})
+
+    set(extras "// no extras")
+    set(casts "// no casts")
+
+    if (ext IN_LIST image_exts)
+      set(extras ${image_extras})
+      set(casts ${image_casts})
+    endif()
+    
+    string(REPLACE "?extras?" ${extras} output_header ${output_header})
+    string(REPLACE "?casts?" ${casts} output_header ${output_header})
+    # TODO: extras should be combined
+
+    string(REPLACE " SEMI" "\;" output_source ${output_source})
+    string(REPLACE " SEMI" "\;" output_header ${output_header})
+  
+    file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/${filename}.cpp" ${output_source})
+    file(APPEND "${CMAKE_BINARY_DIR}/f2_assets/f2_assets.hpp" ${output_header})
+
+    list(APPEND sources "${CMAKE_BINARY_DIR}/f2_assets/${filename}.cpp")
+  endforeach()
+
+  add_library("f2_assets_for_${target}" STATIC ${sources})
+  target_include_directories("f2_assets_for_${target}"
+    PUBLIC "${CMAKE_BINARY_DIR}/f2_assets"
+    PUBLIC include) # TODO: this works only in this directory
+
+  target_link_libraries(${target} "f2_assets_for_${target}")
+endfunction()
+
+# User-space
+set(assets-dir "${CMAKE_BINARY_DIR}/assets")
+set(bricks-texture-path "${assets-dir}/bricks_texture.jpg")
+file(DOWNLOAD https://storage3d.com/storage/2019.10/0df7af19ab278d1489bca0d4c5467361.jpg ${bricks-texture-path})
+
 add_executable(main "test/main.cpp")
 target_link_libraries(main f2)
+f2_set_assets_dir(main ${assets-dir})
+
