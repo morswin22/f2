@@ -7,6 +7,7 @@
 #include <f2/asset/image.hpp>
 #include <f2/asset/asset.hpp>
 #include <f2_assets.hpp>
+#include <f2/render/transform.hpp>
 #include <cstdio>
 
 int main(void) {
@@ -39,30 +40,33 @@ int main(void) {
       GL_RGB, brick_texture.width, brick_texture.height, 0,
       GL_RGB, GL_UNSIGNED_BYTE, brick_texture.pixels);
 
-  glm::vec2 pos{ 0, 0 };
-  glm::vec2 delta{ 1, 1 };
-  float size{ 45 };
+  f2::transform transform{
+    .scale = glm::vec3(45.0f)
+  };
+  glm::vec3 delta{ 1, 1, 0 };
   float speed{ 150 };
 
   while (f2::frame frame = window.next_frame()) {
     // Update
-    pos += delta * speed * (float)frame.elapsed_time;
-    if (pos.x + size > frame.width) {
-      pos.x = frame.width - size;
+    transform.translation += delta * speed * (float)frame.elapsed_time;
+    if (transform.translation.x + transform.scale.x*0.5f > frame.width) {
+      transform.translation.x = frame.width - transform.scale.x*0.5f;
       delta.x = -1;
     }
-    else if (pos.x < 0) {
-      pos.x = 0;
+    else if (transform.translation.x - transform.scale.x*0.5f < 0) {
+      transform.translation.x = transform.scale.x*0.5f;
       delta.x = 1;
     }
-    if (pos.y + size > frame.height) {
-      pos.y = frame.height - size;
+    if (transform.translation.y + transform.scale.y*0.5f > frame.height) {
+      transform.translation.y = frame.height - transform.scale.y*0.5f;
       delta.y = -1;
     }
-    else if (pos.y < 0) {
-      pos.y = 0;
+    else if (transform.translation.y - transform.scale.y*0.5f < 0) {
+      transform.translation.y = transform.scale.y*0.5f;
       delta.y = 1;
     }
+
+    transform.rotation = glm::quat(glm::vec3(0.0f, 0.0f, (float)(frame.frame_count%360)*(float)M_PI/180.0f));
 
     // Draw
     glClearColor(0.128f, 0.128f, 0.128f, 1.0f);
@@ -73,22 +77,22 @@ int main(void) {
     glOrtho(0.0, (double)frame.width, 0, (double)frame.height, -1.0, 1.0);
 
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    glLoadMatrixf(transform);
 
     glColor3f(0.862f, 0.376f, 0.407f);
     glBindTexture(GL_TEXTURE_2D, texture);
     glBegin(GL_QUADS);
       glTexCoord2f(0.0f, 0.0f);
-      glVertex2f(pos.x, pos.y);
+      glVertex2f(-0.5f, -0.5f);
 
       glTexCoord2f(1.0f, 0.0f);
-      glVertex2f(pos.x + size, pos.y);
+      glVertex2f(0.5f, -0.5f);
 
       glTexCoord2f(1.0f, 1.0f);
-      glVertex2f(pos.x + size, pos.y + size);
+      glVertex2f(0.5f, 0.5f);
 
       glTexCoord2f(0.0f, 1.0f);
-      glVertex2f(pos.x, pos.y + size);
+      glVertex2f(-0.5f, 0.5f);
     glEnd();
     glBindTexture(GL_TEXTURE_2D, 0);
 

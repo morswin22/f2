@@ -11,6 +11,7 @@ namespace f2 {
     int width{ 640 };
     int height{ 480 };
     double last_time{ 0.0 };
+    size_t frame_count{ 0u };
     static std::optional<f2::initializer> initializer;
   public:
     window();

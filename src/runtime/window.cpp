@@ -84,6 +84,7 @@ f2::frame f2::window::next_frame() {
     width,
     height,
     current_time - last_time,
+    frame_count++,
     *this
   };
 
