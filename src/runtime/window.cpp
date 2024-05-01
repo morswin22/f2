@@ -1,3 +1,5 @@
+#include <GL/glew.h>
+#define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"
 #include <cstdlib>
 #include <f2/runtime/window.hpp>
@@ -22,6 +24,11 @@ f2::window::window() {
   }
    
   glfwMakeContextCurrent(glfw_window);
+
+  if (glewInit() != GLEW_OK) {
+    glfwTerminate();
+    exit(-1);
+  }
 
 #ifdef f2_enable_imgui
   IMGUI_CHECKVERSION();

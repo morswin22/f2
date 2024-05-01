@@ -1,5 +1,7 @@
+#include "f2/util/scoped_bind.hpp"
+#include <GL/glew.h>
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
-#include <GL/gl.h>
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <f2/runtime/window.hpp>
@@ -8,6 +10,8 @@
 #include <f2/asset/asset.hpp>
 #include <f2_assets.hpp>
 #include <f2/render/transform.hpp>
+#include <f2/render/buffer.hpp>
+#include <f2/render/vao.hpp>
 #include <cstdio>
 
 int main(void) {
@@ -40,6 +44,27 @@ int main(void) {
       GL_RGB, brick_texture.width, brick_texture.height, 0,
       GL_RGB, GL_UNSIGNED_BYTE, brick_texture.pixels);
 
+  f2::vao vao;
+  f2::buffer vbo(GL_ARRAY_BUFFER);
+  f2::buffer ebo(GL_ELEMENT_ARRAY_BUFFER);
+
+  {
+    f2::scoped_bind sb{ vao, vbo, ebo };
+
+    vbo.data(std::array{
+      glm::vec3{  0.5f,  0.5f, 0.0f },
+      glm::vec3{ -0.5f,  0.5f, 0.0f },
+      glm::vec3{ -0.5f, -0.5f, 0.0f },
+      glm::vec3{  0.5f, -0.5f, 0.0f },
+    });
+    vao.attribute(0, 3, GL_FLOAT);
+ 
+    ebo.data(std::array{
+      0, 1, 3,
+      1, 2, 3
+    });
+  };
+  
   f2::transform transform{
     .scale = glm::vec3(45.0f)
   };
