@@ -3,7 +3,9 @@
 #include <glm/gtc/type_ptr.hpp>
 
 f2::transform::operator const float*() const {
-  return glm::value_ptr(compute_matrix(translation, rotation, scale));
+  static glm::mat4 matrix;
+  matrix = compute_matrix(translation, rotation, scale);
+  return glm::value_ptr(matrix);
 }
 
 f2::transform::operator glm::mat4() const {

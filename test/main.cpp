@@ -1,8 +1,8 @@
-#include "f2/util/scoped_bind.hpp"
 #include <GL/glew.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <f2/runtime/window.hpp>
 #include <f2/runtime/frame.hpp>
@@ -12,9 +12,12 @@
 #include <f2/render/transform.hpp>
 #include <f2/render/buffer.hpp>
 #include <f2/render/vao.hpp>
+#include <f2/util/scoped_bind.hpp>
+#include <f2/render/shader.hpp>
 #include <cstdio>
+#include <stdexcept>
 
-int main(void) {
+int main(void) try {
   f2::window window;
   glfwSetWindowTitle(window, "Hello, World!");
 
@@ -35,7 +38,6 @@ int main(void) {
   GLuint texture;
   glGenTextures(1, &texture);
   glBindTexture(GL_TEXTURE_2D, texture);
-  glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
   glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
   glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
   glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -44,27 +46,40 @@ int main(void) {
       GL_RGB, brick_texture.width, brick_texture.height, 0,
       GL_RGB, GL_UNSIGNED_BYTE, brick_texture.pixels);
 
+  f2::shader shader;
   f2::vao vao;
   f2::buffer vbo(GL_ARRAY_BUFFER);
   f2::buffer ebo(GL_ELEMENT_ARRAY_BUFFER);
 
   {
-    f2::scoped_bind sb{ vao, vbo, ebo };
+    f2::scoped_bind sb{ shader, vao, vbo, ebo };
+
+    shader.source(f2::asset<"texture.vert">());
+    shader.source(f2::asset<"texture.frag">());
+    shader.compile();
+  
+    struct Vertex {
+      glm::vec3 position;
+      glm::vec2 texUV;
+    };
 
     vbo.data(std::array{
-      glm::vec3{  0.5f,  0.5f, 0.0f },
-      glm::vec3{ -0.5f,  0.5f, 0.0f },
-      glm::vec3{ -0.5f, -0.5f, 0.0f },
-      glm::vec3{  0.5f, -0.5f, 0.0f },
+      Vertex{ glm::vec3{ -0.5f,  0.5f, 0.0f }, glm::vec2{ 0.0f, 1.0f } },
+      Vertex{ glm::vec3{  0.5f,  0.5f, 0.0f }, glm::vec2{ 1.0f, 1.0f } },
+      Vertex{ glm::vec3{  0.5f, -0.5f, 0.0f }, glm::vec2{ 1.0f, 0.0f } },
+      Vertex{ glm::vec3{ -0.5f, -0.5f, 0.0f }, glm::vec2{ 0.0f, 0.0f } }
     });
-    vao.attribute(0, 3, GL_FLOAT);
+    vao.attribute(shader.attribute("position"), &Vertex::position);
+    vao.attribute(shader.attribute("texUV"), &Vertex::texUV);
  
     ebo.data(std::array{
       0, 1, 3,
       1, 2, 3
     });
   };
-  
+
+  glm::mat4 view = glm::mat4(1.0f);
+
   f2::transform transform{
     .scale = glm::vec3(45.0f)
   };
@@ -96,32 +111,25 @@ int main(void) {
     // Draw
     glClearColor(0.128f, 0.128f, 0.128f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+  
+    glm::mat4 projection = glm::ortho(0.0f, (float)frame.width, 0.0f, (float)frame.height, -1.0f, 1.0f);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, (double)frame.width, 0, (double)frame.height, -1.0, 1.0);
+    shader.bind();
+    glUniformMatrix4fv(shader.uniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(shader.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(shader.uniform("model"), 1, GL_FALSE, transform);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrixf(transform);
-
-    glColor3f(0.862f, 0.376f, 0.407f);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glBegin(GL_QUADS);
-      glTexCoord2f(0.0f, 0.0f);
-      glVertex2f(-0.5f, -0.5f);
+    glUniform1i(shader.uniform("tex0"), 0);
 
-      glTexCoord2f(1.0f, 0.0f);
-      glVertex2f(0.5f, -0.5f);
+    vao.bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    vao.unbind();
 
-      glTexCoord2f(1.0f, 1.0f);
-      glVertex2f(0.5f, 0.5f);
-
-      glTexCoord2f(0.0f, 1.0f);
-      glVertex2f(-0.5f, 0.5f);
-    glEnd();
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glFlush();
+    shader.unbind();
 
     // UI
     ImGui::Begin("Info");
@@ -132,4 +140,13 @@ int main(void) {
   glDeleteTextures(1, &texture);
 
   return 0;
+} catch (const std::runtime_error& e) {
+  fprintf(stderr, "Runtime Error: %s\n", e.what());
+  return 1;
+} catch (const std::exception& e) {
+  fprintf(stderr, "Error: %s\n", e.what());
+  return 1;
+} catch (...) {
+  fprintf(stderr, "Unknown Error\n");
+  return 1;
 }

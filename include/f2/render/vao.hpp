@@ -23,13 +23,13 @@ namespace f2 {
     template<typename C, typename T>
     void attribute(GLuint index, T C::* member, GLint dimensions, GLenum type, GLenum normalized = GL_FALSE) {
       glEnableVertexAttribArray(index);
-      glVertexAttribPointer(index, dimensions, type, normalized, sizeof(C), reinterpret_cast<void*>(offsetof(C, member)));
+      glVertexAttribPointer(index, dimensions, type, normalized, sizeof(C), (void*)&(reinterpret_cast<C const volatile*>(NULL)->*member));
     }
 
     template<typename C, GLint D, typename T, glm::qualifier Q>
     void attribute(GLuint index, glm::vec<D, T, Q> C::* member, GLenum normalized = GL_FALSE) {
       glEnableVertexAttribArray(index);
-      glVertexAttribPointer(index, D, type_to_enum<T>(), normalized, sizeof(C), reinterpret_cast<void*>(offsetof(C, member)));
+      glVertexAttribPointer(index, D, type_to_enum<T>(), normalized, sizeof(C), (void*)&(reinterpret_cast<C const volatile*>(NULL)->*member));
     }
 
     // TODO: store buffers inside vao

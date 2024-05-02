@@ -10,6 +10,16 @@ struct string_literal {
     std::copy_n(str, N, value);
   }
 
+  template <auto M>
+  constexpr bool ends_with(const char (&str)[M]) const {
+    if (N < M)
+      return false;
+    for (int i = 0; i < M; ++i)
+      if (value[N - M + i] != str[i])
+        return false;
+    return true;
+  }
+
   char value[N];
 };
 

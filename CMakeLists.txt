@@ -100,6 +100,18 @@ namespace f2 {
       return f2::image(data, size) SEMI
     }")
 
+  set(shader_exts ".vert;.frag;.geom")
+  set(shader_extras 
+"#include <f2/render/shader.hpp>
+#include <cstring>")
+  set(shader_casts "
+    operator f2::shader_source() const {
+      char source[size + 1] SEMI
+      strncpy(source, data, size) SEMI
+      source[size] = '\\0' SEMI
+      return f2::shader_source(?shader_type?, source) SEMI
+    }")
+
   file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/f2_assets.hpp" "#include <stddef.h>\n")
   set(sources "")
 
@@ -122,6 +134,20 @@ namespace f2 {
     if (ext IN_LIST image_exts)
       set(extras ${image_extras})
       set(casts ${image_casts})
+    endif()
+
+    if (ext IN_LIST shader_exts)
+      set(extras ${shader_extras})
+      set(casts ${shader_casts})
+      if (ext STREQUAL ".vert")
+        string(REPLACE "?shader_type?" "GL_VERTEX_SHADER" casts ${casts})
+      elseif (ext STREQUAL ".frag")
+        string(REPLACE "?shader_type?" "GL_FRAGMENT_SHADER" casts ${casts})
+      elseif (ext STREQUAL ".geom")
+        string(REPLACE "?shader_type?" "GL_GEOMETRY_SHADER" casts ${casts})
+      else()
+        message(FATAL_ERROR "Unknown shader type: ${ext}")
+      endif()
     endif()
     
     string(REPLACE "?extras?" ${extras} output_header ${output_header})
@@ -147,8 +173,9 @@ endfunction()
 
 # User-space
 set(assets-dir "${CMAKE_BINARY_DIR}/assets")
-set(bricks-texture-path "${assets-dir}/bricks_texture.jpg")
-file(DOWNLOAD https://storage3d.com/storage/2019.10/0df7af19ab278d1489bca0d4c5467361.jpg ${bricks-texture-path})
+file(DOWNLOAD https://storage3d.com/storage/2019.10/0df7af19ab278d1489bca0d4c5467361.jpg "${assets-dir}/bricks_texture.jpg")
+file(DOWNLOAD https://gist.githubusercontent.com/morswin22/afbfb5cb638f0fe2efdceae40bb91f44/raw/ad10e81bc5d0d0a83b08df835c958251fa346e4f/texture.vert "${assets-dir}/texture.vert")
+file(DOWNLOAD https://gist.githubusercontent.com/morswin22/afbfb5cb638f0fe2efdceae40bb91f44/raw/ad10e81bc5d0d0a83b08df835c958251fa346e4f/texture.frag "${assets-dir}/texture.frag")
 
 add_executable(main "test/main.cpp")
 target_link_libraries(main f2)
