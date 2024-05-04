@@ -34,7 +34,13 @@ FetchContent_Declare(
   GIT_TAG ae721c50eaf761660b4f90cc590453cdb0c2acd0 
 )
 
-FetchContent_MakeAvailable(glfw glew glm stb)
+FetchContent_Declare(
+  tinyobjloader
+  GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git
+  GIT_TAG cab4ad7254cbf7eaaafdb73d272f99e92f166df8
+)
+
+FetchContent_MakeAvailable(glfw glew glm stb tinyobjloader)
 
 if(f2-enable-imgui)
   FetchContent_Declare(
@@ -51,22 +57,10 @@ if(f2-enable-imgui)
   target_include_directories(imgui_cmake PUBLIC ${imgui_SOURCE_DIR} PUBLIC "${imgui_SOURCE_DIR}/backends" PUBLIC "${glfw_SOURCE_DIR}/include")
 endif()
 
-file(GLOB_RECURSE f2-src "src/**/*.cpp")
-add_library(f2 STATIC ${f2-src})
-target_include_directories(f2
-  PUBLIC include
-  PUBLIC ${stb_SOURCE_DIR}
-)
-target_link_libraries(f2 glfw libglew_static glm)
-if (f2-enable-imgui)
-  target_compile_definitions(f2 PUBLIC -Df2_enable_imgui)
-  target_link_libraries(f2 imgui_cmake)
-endif()
-
 function(f2_set_assets_dir target path)
   # for all assets in path
   set(template_source
-"#include <f2_assets.hpp>
+"#include <${target}/f2_assets.hpp>
 extern char data_start[] SEMI
 extern char data_end[] SEMI
 asm(
@@ -112,7 +106,21 @@ namespace f2 {
       return f2::shader_source(?shader_type?, source) SEMI
     }")
 
-  file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/f2_assets.hpp" "#include <stddef.h>\n")
+  set(obj_exts ".obj")
+  set(obj_extras 
+"#include <tiny_obj_loader.h>
+#include <cstring>")
+  set(obj_casts "
+    operator tinyobj::ObjReader() const {
+      char source[size + 1] SEMI
+      strncpy(source, data, size) SEMI
+      source[size] = '\\0' SEMI
+      tinyobj::ObjReader reader SEMI
+      reader.ParseFromString(source, \"\") SEMI
+      return reader SEMI
+    }") # TODO: mtl support
+
+  file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/${target}/f2_assets.hpp" "#include <stddef.h>\n")
   set(sources "")
 
   file(GLOB_RECURSE assets "${path}/*")
@@ -149,6 +157,11 @@ namespace f2 {
         message(FATAL_ERROR "Unknown shader type: ${ext}")
       endif()
     endif()
+
+    if (ext IN_LIST obj_exts)
+      set(extras ${obj_extras})
+      set(casts ${obj_casts})
+    endif()
     
     string(REPLACE "?extras?" ${extras} output_header ${output_header})
     string(REPLACE "?casts?" ${casts} output_header ${output_header})
@@ -157,13 +170,14 @@ namespace f2 {
     string(REPLACE " SEMI" "\;" output_source ${output_source})
     string(REPLACE " SEMI" "\;" output_header ${output_header})
   
-    file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/${filename}.cpp" ${output_source})
-    file(APPEND "${CMAKE_BINARY_DIR}/f2_assets/f2_assets.hpp" ${output_header})
+    file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp" ${output_source})
+    file(APPEND "${CMAKE_BINARY_DIR}/f2_assets/${target}/f2_assets.hpp" ${output_header})
 
-    list(APPEND sources "${CMAKE_BINARY_DIR}/f2_assets/${filename}.cpp")
+    list(APPEND sources "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp")
   endforeach()
 
   add_library("f2_assets_for_${target}" STATIC ${sources})
+  target_link_libraries("f2_assets_for_${target}" tinyobjloader)
   target_include_directories("f2_assets_for_${target}"
     PUBLIC "${CMAKE_BINARY_DIR}/f2_assets"
     PUBLIC include) # TODO: this works only in this directory
@@ -171,11 +185,25 @@ namespace f2 {
   target_link_libraries(${target} "f2_assets_for_${target}")
 endfunction()
 
+file(GLOB_RECURSE f2-src "src/**/*.cpp")
+add_library(f2 STATIC ${f2-src})
+target_include_directories(f2
+  PUBLIC include
+  PUBLIC ${stb_SOURCE_DIR}
+)
+target_link_libraries(f2 glfw libglew_static glm tinyobjloader)
+f2_set_assets_dir(f2 "${CMAKE_SOURCE_DIR}/src/render/shaders")
+if (f2-enable-imgui)
+  target_compile_definitions(f2 PUBLIC -Df2_enable_imgui)
+  target_link_libraries(f2 imgui_cmake)
+endif()
+
 # User-space
 set(assets-dir "${CMAKE_BINARY_DIR}/assets")
 file(DOWNLOAD https://storage3d.com/storage/2019.10/0df7af19ab278d1489bca0d4c5467361.jpg "${assets-dir}/bricks_texture.jpg")
 file(DOWNLOAD https://gist.githubusercontent.com/morswin22/afbfb5cb638f0fe2efdceae40bb91f44/raw/ad10e81bc5d0d0a83b08df835c958251fa346e4f/texture.vert "${assets-dir}/texture.vert")
 file(DOWNLOAD https://gist.githubusercontent.com/morswin22/afbfb5cb638f0fe2efdceae40bb91f44/raw/ad10e81bc5d0d0a83b08df835c958251fa346e4f/texture.frag "${assets-dir}/texture.frag")
+file(DOWNLOAD https://graphics.stanford.edu/~mdfisher/Data/Meshes/bunny.obj "${assets-dir}/bunny.obj")
 
 add_executable(main "test/main.cpp")
 target_link_libraries(main f2)
