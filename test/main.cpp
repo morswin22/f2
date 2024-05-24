@@ -15,6 +15,7 @@
 #include <f2/util/scoped_bind.hpp>
 #include <f2/render/shader.hpp>
 #include <f2/render/camera.hpp>
+#include <f2/util/color.hpp>
 #include <main/f2_assets.hpp>
 #include <cstdio>
 #include <stdexcept>
@@ -51,7 +52,7 @@ int main(void) try {
   };
 
   f2::lambert_shader::uniforms::Material material = {
-    .color = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f),
+    .color = f2::color(0x888ACFFF),
     .ambient = glm::vec3(1.0f)
   };
 
