@@ -48,7 +48,7 @@ jobs:
     - name: Test glxinfo
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev mesa-utils xvfb
+        sudo apt-get install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libglew-dev mesa-utils xvfb
         xvfb-run glxinfo
 
     - name: Set reusable strings
