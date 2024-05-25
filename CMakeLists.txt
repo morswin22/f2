@@ -209,3 +209,10 @@ add_executable(main "test/main.cpp")
 target_link_libraries(main f2)
 f2_set_assets_dir(main ${assets-dir})
 
+include(GNUInstallDirs)
+install(TARGETS f2 main
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/f2
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  # FILE_SET DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # TODO: Distribute f2 headers
+)
