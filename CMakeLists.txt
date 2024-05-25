@@ -40,7 +40,13 @@ FetchContent_Declare(
   GIT_TAG cab4ad7254cbf7eaaafdb73d272f99e92f166df8
 )
 
-FetchContent_MakeAvailable(glfw glew glm stb tinyobjloader)
+FetchContent_Declare(
+  doctest
+  GIT_REPOSITORY https://github.com/doctest/doctest.git
+  GIT_TAG 4e49843d1f70d6bb47727d3bc67720e9abb03df1
+)
+
+FetchContent_MakeAvailable(glfw glew glm stb tinyobjloader doctest)
 
 if(f2-enable-imgui)
   FetchContent_Declare(
@@ -186,6 +192,24 @@ namespace f2 {
 endfunction()
 
 file(GLOB_RECURSE f2-src "src/**/*.cpp")
+add_library(f2-object OBJECT ${f2-src})
+target_include_directories(f2-object
+  PUBLIC include
+  PUBLIC ${stb_SOURCE_DIR}
+)
+target_link_libraries(f2-object glfw libglew_static glm tinyobjloader doctest)
+f2_set_assets_dir(f2-object "${CMAKE_SOURCE_DIR}/src/render/shaders")
+if (f2-enable-imgui)
+  target_compile_definitions(f2-object PUBLIC -Df2_enable_imgui)
+  target_link_libraries(f2-object imgui_cmake)
+endif()
+
+add_executable(f2-doctest "test/doctest.cpp")
+target_link_libraries(f2-doctest f2-object)
+
+include(CTest)
+add_test(NAME f2-doctest COMMAND f2-doctest)
+
 file(GLOB_RECURSE f2-headers "include/f2/**/*.hpp")
 add_library(f2 STATIC ${f2-src})
 target_sources(f2
@@ -197,7 +221,8 @@ target_include_directories(f2
   PUBLIC include
   PUBLIC ${stb_SOURCE_DIR}
 )
-target_link_libraries(f2 glfw libglew_static glm tinyobjloader)
+target_link_libraries(f2 glfw libglew_static glm tinyobjloader doctest)
+target_compile_definitions(f2 PUBLIC DOCTEST_CONFIG_DISABLE)
 f2_set_assets_dir(f2 "${CMAKE_SOURCE_DIR}/src/render/shaders")
 if (f2-enable-imgui)
   target_compile_definitions(f2 PUBLIC -Df2_enable_imgui)

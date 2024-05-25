@@ -8,8 +8,22 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #endif
-
+#include <stdexcept>
 #include <f2/runtime/frame.hpp>
+#include <doctest/doctest.h>
+
+TEST_CASE("Create a window") {
+  f2::window window;
+
+  for (size_t i = 0; i < 2; i++) {
+    f2::frame frame = window.next_frame();
+    CHECK(frame.should_close == false);
+    CHECK(frame.elapsed_time > 0.0);
+    CHECK(frame.frame_count == i);
+  }
+
+  CHECK(glGetError() == GL_NO_ERROR);
+}
 
 std::optional<f2::initializer> f2::window::initializer{ std::nullopt };
 
@@ -20,14 +34,14 @@ f2::window::window() {
   glfw_window = glfwCreateWindow(width, height, "f2 Window", nullptr, nullptr);
   if (!glfw_window) {
     glfwTerminate();
-    exit(-1);
+    throw std::runtime_error("Failed to create GLFW window");
   }
    
   glfwMakeContextCurrent(glfw_window);
 
   if (glewInit() != GLEW_OK) {
     glfwTerminate();
-    exit(-1);
+    throw std::runtime_error("Failed to initialize GLEW");
   }
 
 #ifdef f2_enable_imgui
