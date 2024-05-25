@@ -186,7 +186,13 @@ namespace f2 {
 endfunction()
 
 file(GLOB_RECURSE f2-src "src/**/*.cpp")
+file(GLOB_RECURSE f2-headers "include/f2/**/*.hpp")
 add_library(f2 STATIC ${f2-src})
+target_sources(f2
+  PUBLIC FILE_SET HEADERS
+  BASE_DIRS include
+  FILES ${f2-headers}
+)
 target_include_directories(f2
   PUBLIC include
   PUBLIC ${stb_SOURCE_DIR}
@@ -214,5 +220,5 @@ install(TARGETS f2 main
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/f2
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  # FILE_SET DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # TODO: Distribute f2 headers
+  FILE_SET HEADERS DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
