@@ -84,7 +84,8 @@ jobs:
       run: >
         lcov --summary ${{ steps.strings.outputs.coverage-info }} | grep -oP 'lines\.*: \d+\.\d+%' | awk '{print "coverage="$2}' >> "$GITHUB_OUTPUT"
 
-    - name: Update coverage badge
+    - if: github.event_name == 'push' 
+      name: Update coverage badge
       uses: schneegans/dynamic-badges-action@v1.7.0
       with:
         auth: ${{ secrets.GIST_SECRET }}
