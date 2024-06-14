@@ -1,5 +1,57 @@
 #include <f2/render/shader.hpp>
 #include <stdexcept>
+#include <doctest/doctest.h>
+#include <f2/runtime/window.hpp>
+
+TEST_CASE("Create shader") {
+  f2::window window;
+
+  f2::shader shader;
+  CHECK(shader.id() != 0);
+
+  f2::shader other = std::move(shader);
+  shader = std::move(other);
+  CHECK(shader.id() != 0);
+  CHECK(other.id() == 0);
+
+  f2::shader_source vertex(GL_VERTEX_SHADER, R"(
+    #version 330 core
+    layout(location = 0) in vec3 position;
+    void main() {
+      gl_Position = vec4(position, 1.0);
+    }
+  )");
+
+  f2::shader_source fragment(GL_FRAGMENT_SHADER, R"(
+    #version 330 core
+    out vec4 color;
+    void main() {
+      color = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+  )");
+
+  f2::shader_source other_source = std::move(vertex);
+  vertex = std::move(other_source);
+
+  try {
+    f2::shader_source bad_source(GL_FRAGMENT_SHADER, R"(bad code)");
+  } catch (const std::runtime_error& e) {
+    CHECK(e.what() != nullptr);
+  }
+
+  shader.source(std::move(vertex));
+  shader.source(std::move(fragment));
+  shader.compile();
+
+  shader.bind();
+  CHECK(shader.attribute("position") == 0);
+  CHECK(shader.attribute("position") == 0);
+  CHECK(shader.uniform("color") == -1);
+  CHECK(shader.uniform("color") == -1);
+  shader.unbind();
+
+  CHECK(glGetError() == GL_NO_ERROR);
+}
 
 f2::shader_source::shader_source(GLenum type, const char* source) : _type(type) {
   _id = glCreateShader(_type);
