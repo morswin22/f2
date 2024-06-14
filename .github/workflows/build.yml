@@ -48,7 +48,7 @@ jobs:
     - name: Install dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libglew-dev xvfb
+        packages: libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libglew-dev xvfb lcov
         version: 1.0
 
     - name: Set reusable strings
@@ -58,10 +58,27 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "install-dir=${{ github.workspace }}/install" >> "$GITHUB_OUTPUT"
+        echo "coverage-dir=${{ github.workspace }}/build/ccov/f2-doctest" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
-      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+    - name: Configure CMake for tests
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
+        -DCMAKE_BUILD_TYPE=Debug
+        -DCODE_COVERAGE=ON
+        -S ${{ github.workspace }}
+
+    - name: Build and run tests
+      run: xvfb-run cmake --build ${{ steps.strings.outputs.build-output-dir }} --target ccov-f2-doctest --config Debug
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ${{ steps.strings.outputs.coverage-dir }}
+
+    - name: Configure CMake for artifact
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
@@ -70,7 +87,6 @@ jobs:
         -S ${{ github.workspace }}
 
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
     - name: Install
@@ -80,11 +96,5 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Install
+        name: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.c_compiler }}
         path: ${{ steps.strings.outputs.install-dir }}
-
-    - name: Test
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: xvfb-run ctest --build-config ${{ matrix.build_type }}

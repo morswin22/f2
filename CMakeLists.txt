@@ -46,7 +46,13 @@ FetchContent_Declare(
   GIT_TAG 4e49843d1f70d6bb47727d3bc67720e9abb03df1
 )
 
-FetchContent_MakeAvailable(glfw glew glm stb tinyobjloader doctest)
+FetchContent_Declare(
+  cmake-scripts
+  GIT_REPOSITORY https://github.com/StableCoder/cmake-scripts.git
+  GIT_TAG 45f72fdc2d715030c6cb61e3d5977811ea45abda
+)
+
+FetchContent_MakeAvailable(glfw glew glm stb tinyobjloader doctest cmake-scripts)
 
 if(f2-enable-imgui)
   FetchContent_Declare(
@@ -220,8 +226,9 @@ target_compile_definitions(f2 PUBLIC DOCTEST_CONFIG_DISABLE)
 add_executable(f2-doctest ${f2-src} "test/doctest.cpp")
 f2_common_properties(f2-doctest)
 
-include(CTest)
-add_test(NAME f2-doctest COMMAND f2-doctest)
+# set(CODE_COVERAGE ON)
+include("${cmake-scripts_SOURCE_DIR}/code-coverage.cmake")
+target_code_coverage(f2-doctest PLAIN EXTERNAL EXCLUDE "/usr/*;*f2/build/*")
 
 # User-space
 set(assets-dir "${CMAKE_BINARY_DIR}/assets")
