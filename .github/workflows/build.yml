@@ -59,6 +59,7 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
         echo "install-dir=${{ github.workspace }}/install" >> "$GITHUB_OUTPUT"
         echo "coverage-dir=${{ github.workspace }}/build/ccov/f2-doctest" >> "$GITHUB_OUTPUT"
+        echo "coverage-info=${{ github.workspace}}/build/ccov/f2-doctest.info" >> "$GITHUB_OUTPUT"
 
     - name: Configure CMake for tests
       run: >
@@ -77,6 +78,21 @@ jobs:
       with:
         name: coverage-report
         path: ${{ steps.strings.outputs.coverage-dir }}
+
+    - name: Extract coverage percentage
+      id: extract
+      run: >
+        lcov --summary ${{ steps.strings.outputs.coverage-info }} | grep -oP 'lines\.*: \d+\.\d+%' | awk '{print "coverage="$2}' >> "$GITHUB_OUTPUT"
+
+    - name: Update coverage badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_SECRET }}
+        gistID: ba189ce4c9c4c4aa5f9441783a957161
+        filename: coverage.json
+        label: Coverage
+        message: ${{ steps.extract.outputs.coverage }}
+        color: orange
 
     - name: Configure CMake for artifact
       run: >
