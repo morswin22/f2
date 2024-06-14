@@ -191,43 +191,37 @@ namespace f2 {
   target_link_libraries(${target} "f2_assets_for_${target}")
 endfunction()
 
+function(f2_common_properties target)
+  target_include_directories(${target}
+    PUBLIC include
+    PUBLIC ${stb_SOURCE_DIR}
+  )
+  target_link_libraries(${target} glfw libglew_static glm tinyobjloader doctest)
+  f2_set_assets_dir(${target} "${CMAKE_SOURCE_DIR}/src/render/shaders")
+  if (f2-enable-imgui)
+    target_compile_definitions(${target} PUBLIC -Df2_enable_imgui)
+    target_link_libraries(${target} imgui_cmake)
+  endif()
+endfunction()
+
 file(GLOB_RECURSE f2-src "src/**/*.cpp")
-add_library(f2-object OBJECT ${f2-src})
-target_include_directories(f2-object
-  PUBLIC include
-  PUBLIC ${stb_SOURCE_DIR}
-)
-target_link_libraries(f2-object glfw libglew_static glm tinyobjloader doctest)
-f2_set_assets_dir(f2-object "${CMAKE_SOURCE_DIR}/src/render/shaders")
-if (f2-enable-imgui)
-  target_compile_definitions(f2-object PUBLIC -Df2_enable_imgui)
-  target_link_libraries(f2-object imgui_cmake)
-endif()
-
-add_executable(f2-doctest "test/doctest.cpp")
-target_link_libraries(f2-doctest f2-object)
-
-include(CTest)
-add_test(NAME f2-doctest COMMAND f2-doctest)
-
 file(GLOB_RECURSE f2-headers "include/f2/**/*.hpp")
+
 add_library(f2 STATIC ${f2-src})
+f2_common_properties(f2)
 target_sources(f2
   PUBLIC FILE_SET HEADERS
   BASE_DIRS include
   FILES ${f2-headers}
 )
-target_include_directories(f2
-  PUBLIC include
-  PUBLIC ${stb_SOURCE_DIR}
-)
-target_link_libraries(f2 glfw libglew_static glm tinyobjloader doctest)
 target_compile_definitions(f2 PUBLIC DOCTEST_CONFIG_DISABLE)
-f2_set_assets_dir(f2 "${CMAKE_SOURCE_DIR}/src/render/shaders")
-if (f2-enable-imgui)
-  target_compile_definitions(f2 PUBLIC -Df2_enable_imgui)
-  target_link_libraries(f2 imgui_cmake)
-endif()
+
+# Tests
+add_executable(f2-doctest ${f2-src} "test/doctest.cpp")
+f2_common_properties(f2-doctest)
+
+include(CTest)
+add_test(NAME f2-doctest COMMAND f2-doctest)
 
 # User-space
 set(assets-dir "${CMAKE_BINARY_DIR}/assets")
