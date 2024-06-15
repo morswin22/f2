@@ -84,6 +84,11 @@ jobs:
       run: >
         lcov --summary ${{ steps.strings.outputs.coverage-info }} | grep -oP 'lines\.*: \d+\.\d+%' | awk '{print "coverage="$2}' >> "$GITHUB_OUTPUT"
 
+    - name: Extract coverage badge color
+      id: badge
+      run: >
+        echo "color=${{ steps.extract.outputs.coverage }}" | awk -F "=" '{if (int($2) >= 90) print $1 "=green"; else if (int($2) >= 50) print $1 "=yellow"; else print $1 "=red" }' >> "$GITHUB_OUTPUT"
+
     - if: github.event_name == 'push' 
       name: Update coverage badge
       uses: schneegans/dynamic-badges-action@v1.7.0
@@ -93,7 +98,7 @@ jobs:
         filename: coverage.json
         label: Coverage
         message: ${{ steps.extract.outputs.coverage }}
-        color: orange
+        color: ${{ steps.badge.outputs.color }}
 
     - name: Configure CMake for artifact
       run: >
