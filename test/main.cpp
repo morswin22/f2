@@ -139,7 +139,7 @@ int main(void) try {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
     {
-      f2::scoped_bind fsb{ shader, quad.vao };
+      F2_SCOPE_BIND{ shader, quad.vao };
 
       glUniformMatrix4fv(shader.uniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
       glUniformMatrix4fv(shader.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -155,7 +155,7 @@ int main(void) try {
     }
 
     {
-      f2::scoped_bind fsb{ lambert, bunny.vao };
+      F2_SCOPE_BIND{ lambert, bunny.vao };
 
       glUniformMatrix4fv(lambert.uniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
       glUniformMatrix4fv(lambert.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
