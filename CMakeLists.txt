@@ -69,23 +69,9 @@ if(f2-enable-imgui)
   target_include_directories(imgui_cmake PUBLIC ${imgui_SOURCE_DIR} PUBLIC "${imgui_SOURCE_DIR}/backends" PUBLIC "${glfw_SOURCE_DIR}/include")
 endif()
 
-function(f2_set_assets_dir target path)
-  # for all assets in path
-  set(template_source
-"#include <${target}/f2_assets.hpp>
-extern char data_start[] SEMI
-extern char data_end[] SEMI
-asm(
-  \".section \\\".rodata\\\", \\\"a\\\", @progbits\\n\"
-  \"data_start:\\n\"
-    \".incbin \\\"?path?\\\"\\n\"
-  \"data_end:\\n\"
-    \".previous\\n\"
-) SEMI
-const char* f2::asset<\"?filename?\">::data{ data_start } SEMI
-const size_t f2::asset<\"?filename?\">::size{ static_cast<size_t>(data_end - data_start) } SEMI
-")
+add_executable(assets-codegen assets_codegen.cpp)
 
+function(f2_set_assets_dir target path)
   set(template_header
 "#include <f2/asset/asset.hpp>
 ?extras?
@@ -140,13 +126,9 @@ namespace f2 {
     get_filename_component(ext ${asset} LAST_EXT)
     get_filename_component(filename ${asset} NAME)
  
-    set(output_source ${template_source})
     set(output_header ${template_header})
 
-    string(REPLACE "?filename?" ${filename} output_source ${output_source})
     string(REPLACE "?filename?" ${filename} output_header ${output_header})
-
-    string(REPLACE "?path?" ${asset} output_source ${output_source})
 
     set(extras "// no extras")
     set(casts "// no casts")
@@ -179,10 +161,16 @@ namespace f2 {
     string(REPLACE "?casts?" ${casts} output_header ${output_header})
     # TODO: extras should be combined
 
-    string(REPLACE " SEMI" "\;" output_source ${output_source})
     string(REPLACE " SEMI" "\;" output_header ${output_header})
+
+    add_custom_command(
+      OUTPUT "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp"
+      COMMAND assets-codegen "${CMAKE_SOURCE_DIR}/asset_template.cpp" "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp" target=${target} path=${asset} name=${filename}
+      DEPENDS "${CMAKE_SOURCE_DIR}/asset_template.cpp"
+      COMMENT "Templating ${target}/${filename}"
+      VERBATIM
+    )
   
-    file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp" ${output_source})
     file(APPEND "${CMAKE_BINARY_DIR}/f2_assets/${target}/f2_assets.hpp" ${output_header})
 
     list(APPEND sources "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp")
