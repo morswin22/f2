@@ -69,118 +69,30 @@ if(f2-enable-imgui)
   target_include_directories(imgui_cmake PUBLIC ${imgui_SOURCE_DIR} PUBLIC "${imgui_SOURCE_DIR}/backends" PUBLIC "${glfw_SOURCE_DIR}/include")
 endif()
 
-add_executable(assets-codegen assets_codegen.cpp)
+add_executable(assets-codegen assets_codegen/assets_codegen.cpp)
 
 function(f2_set_assets_dir target path)
-  set(template_header
-"#include <f2/asset/asset.hpp>
-?extras?
-namespace f2 {
-  template <>
-  struct asset<\"?filename?\"> {
-    static const char* data SEMI
-    static const size_t size SEMI
-?casts?
-  } SEMI
-}
-")
-
-  set(image_exts ".jpg;.jpeg;.png;.bmp")
-  set(image_extras "#include <f2/asset/image.hpp>")
-  set(image_casts "
-    operator f2::image() const {
-      return f2::image(data, size) SEMI
-    }")
-
-  set(shader_exts ".vert;.frag;.geom")
-  set(shader_extras 
-"#include <f2/render/shader.hpp>
-#include <cstring>")
-  set(shader_casts "
-    operator f2::shader_source() const {
-      char source[size + 1] SEMI
-      strncpy(source, data, size) SEMI
-      source[size] = '\\0' SEMI
-      return f2::shader_source(?shader_type?, source) SEMI
-    }")
-
-  set(obj_exts ".obj")
-  set(obj_extras 
-"#include <tiny_obj_loader.h>
-#include <cstring>")
-  set(obj_casts "
-    operator tinyobj::ObjReader() const {
-      char source[size + 1] SEMI
-      strncpy(source, data, size) SEMI
-      source[size] = '\\0' SEMI
-      tinyobj::ObjReader reader SEMI
-      reader.ParseFromString(source, \"\") SEMI
-      return reader SEMI
-    }") # TODO: mtl support
-
-  file(WRITE "${CMAKE_BINARY_DIR}/f2_assets/${target}/f2_assets.hpp" "#include <stddef.h>\n")
-  set(sources "")
-
   file(GLOB_RECURSE assets "${path}/*")
-  foreach(asset ${assets})
-    get_filename_component(ext ${asset} LAST_EXT)
-    get_filename_component(filename ${asset} NAME)
- 
-    set(output_header ${template_header})
-
-    string(REPLACE "?filename?" ${filename} output_header ${output_header})
-
-    set(extras "// no extras")
-    set(casts "// no casts")
-
-    if (ext IN_LIST image_exts)
-      set(extras ${image_extras})
-      set(casts ${image_casts})
-    endif()
-
-    if (ext IN_LIST shader_exts)
-      set(extras ${shader_extras})
-      set(casts ${shader_casts})
-      if (ext STREQUAL ".vert")
-        string(REPLACE "?shader_type?" "GL_VERTEX_SHADER" casts ${casts})
-      elseif (ext STREQUAL ".frag")
-        string(REPLACE "?shader_type?" "GL_FRAGMENT_SHADER" casts ${casts})
-      elseif (ext STREQUAL ".geom")
-        string(REPLACE "?shader_type?" "GL_GEOMETRY_SHADER" casts ${casts})
-      else()
-        message(FATAL_ERROR "Unknown shader type: ${ext}")
-      endif()
-    endif()
-
-    if (ext IN_LIST obj_exts)
-      set(extras ${obj_extras})
-      set(casts ${obj_casts})
-    endif()
-    
-    string(REPLACE "?extras?" ${extras} output_header ${output_header})
-    string(REPLACE "?casts?" ${casts} output_header ${output_header})
-    # TODO: extras should be combined
-
-    string(REPLACE " SEMI" "\;" output_header ${output_header})
-
-    add_custom_command(
-      OUTPUT "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp"
-      COMMAND assets-codegen "${CMAKE_SOURCE_DIR}/asset_template.cpp" "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp" target=${target} path=${asset} name=${filename}
-      DEPENDS "${CMAKE_SOURCE_DIR}/asset_template.cpp"
-      COMMENT "Templating ${target}/${filename}"
-      VERBATIM
-    )
+  file(GLOB templates "${CMAKE_SOURCE_DIR}/assets_codegen/*_template.*pp")
   
-    file(APPEND "${CMAKE_BINARY_DIR}/f2_assets/${target}/f2_assets.hpp" ${output_header})
-
-    list(APPEND sources "${CMAKE_BINARY_DIR}/f2_assets/${target}/${filename}.cpp")
+  set(output_path "${CMAKE_BINARY_DIR}/f2_assets/${target}")
+  set(output "")
+  foreach(asset ${assets})
+    get_filename_component(filename ${asset} NAME)
+    list(APPEND output "${output_path}/${filename}.cpp")
   endforeach()
 
-  add_library("f2_assets_for_${target}" STATIC ${sources})
+  add_custom_command(OUTPUT "${output_path}/f2_assets.hpp" ${output}
+    COMMAND assets-codegen "${path}" "${output_path}" "${CMAKE_SOURCE_DIR}/assets_codegen" "${target}"
+    DEPENDS ${assets} ${templates}
+    VERBATIM
+  )
+
+  add_library("f2_assets_for_${target}" STATIC ${output})
   target_link_libraries("f2_assets_for_${target}" tinyobjloader)
   target_include_directories("f2_assets_for_${target}"
     PUBLIC "${CMAKE_BINARY_DIR}/f2_assets"
-    PUBLIC include) # TODO: this works only in this directory
+    PUBLIC "${CMAKE_SOURCE_DIR}/include")
 
   target_link_libraries(${target} "f2_assets_for_${target}")
 endfunction()
