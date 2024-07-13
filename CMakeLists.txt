@@ -71,11 +71,11 @@ endif()
 
 add_executable(assets-codegen assets_codegen/assets_codegen.cpp)
 
-function(f2_set_assets_dir target path)
+function(f2_add_assets_target target namespace path)
   file(GLOB_RECURSE assets "${path}/*")
   file(GLOB templates "${CMAKE_SOURCE_DIR}/assets_codegen/*_template.*pp")
   
-  set(output_path "${CMAKE_BINARY_DIR}/f2_assets/${target}")
+  set(output_path "${CMAKE_BINARY_DIR}/f2_assets/${namespace}")
   set(output "")
   foreach(asset ${assets})
     get_filename_component(filename ${asset} NAME)
@@ -83,27 +83,30 @@ function(f2_set_assets_dir target path)
   endforeach()
 
   add_custom_command(OUTPUT "${output_path}/f2_assets.hpp" ${output}
-    COMMAND assets-codegen "${path}" "${output_path}" "${CMAKE_SOURCE_DIR}/assets_codegen" "${target}"
+    COMMAND assets-codegen "${path}" "${output_path}" "${CMAKE_SOURCE_DIR}/assets_codegen" "${namespace}"
     DEPENDS ${assets} ${templates}
     VERBATIM
   )
 
-  add_library("f2_assets_for_${target}" STATIC ${output})
-  target_link_libraries("f2_assets_for_${target}" tinyobjloader)
-  target_include_directories("f2_assets_for_${target}"
+  add_library(${target} STATIC ${output})
+  target_link_libraries(${target} tinyobjloader)
+  target_include_directories(${target}
     PUBLIC "${CMAKE_BINARY_DIR}/f2_assets"
     PUBLIC "${CMAKE_SOURCE_DIR}/include")
+endfunction()
 
+function(f2_set_assets_dir target path)
+  f2_add_assets_target("f2_assets_for_${target}" ${target} ${path})
   target_link_libraries(${target} "f2_assets_for_${target}")
 endfunction()
 
+f2_add_assets_target("f2_assets" "f2" "${CMAKE_SOURCE_DIR}/src/render/shaders")
 function(f2_common_properties target)
   target_include_directories(${target}
     PUBLIC include
     PUBLIC ${stb_SOURCE_DIR}
   )
-  target_link_libraries(${target} glfw libglew_static glm tinyobjloader doctest)
-  f2_set_assets_dir(${target} "${CMAKE_SOURCE_DIR}/src/render/shaders")
+  target_link_libraries(${target} glfw libglew_static glm tinyobjloader doctest f2_assets)
   if (f2-enable-imgui)
     target_compile_definitions(${target} PUBLIC -Df2_enable_imgui)
     target_link_libraries(${target} imgui_cmake)
