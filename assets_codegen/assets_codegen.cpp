@@ -117,7 +117,7 @@ int main(int argc, char **argv) try {
 
   std::filesystem::path output_dir(argv[2]);
   if (!std::filesystem::exists(output_dir))
-    std::filesystem::create_directory(output_dir);
+    std::filesystem::create_directories(output_dir);
 
   std::unordered_set<std::string> headers, assets;
 
